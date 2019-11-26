@@ -1,17 +1,37 @@
-# nursery
-Structured Concurrency in Go
+# nursery: structured concurrency in Go
+[![GoDoc](https://godoc.org/github.com/arunsworld/nursery?status.svg)](https://godoc.org/github.com/arunsworld/nursery)
+[![GoReportCard](https://goreportcard.com/badge/github.com/arunsworld/nursery)](https://goreportcard.com/badge/github.com/arunsworld/nursery)
+[![CircleCI](https://circleci.com/gh/arunsworld/nursery.svg?style=svg)](https://circleci.com/gh/arunsworld/nursery)
+<a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-100%25-brightgreen.svg?longCache=true&style=flat)</a>
 
-# Background
+```go
+RunConcurrently([]ConcurrentJob{
+    // Job 1
+    func(context.Context, chan error) {
+        time.Sleep(time.Millisecond * 10)
+        log.Println("Job 1 done...")
+    },
+    // Job 2
+    func(context.Context, chan error) {
+        time.Sleep(time.Millisecond * 5)
+        log.Println("Job 2 done...")
+    },
+})
+log.Println("All jobs done...")
+```
+
 [Notes on structured concurrency, or: Go statement considered harmful](https://vorpus.org/blog/notes-on-structured-concurrency-or-go-statement-considered-harmful/#nurseries-a-structured-replacement-for-go-statements) is an article that compares the dangers of goto with the go statement.
 
-While I don't necessarily agree with the content I can appreciate that even with Go's high-level abstraction of concurrency using Goroutines, Channels & the select statement it is possible to end up with deadlocks, leaked goroutines and race conditions.
+While I don't necessarily agree with the entire content I can appreciate that even with Go's high-level abstraction of concurrency using Goroutines, Channels & the select statement it is possible to end up with deadlocks, leaked goroutines and race conditions.
 
-Yet, implementing a higher-level abstraction for the simple use-cases mentioned is very straightforward in Go and this trivially simple package provides just that.
+Implementing a higher-level abstraction for the use-cases mentioned is very straightforward in Go and this simple package provides just that.
 
-It exposes a function `RunConcurrently(jobs []ConcurrentJob) error` that takes an array of ConcurrentJob types and runs them concurrently ensuring that all jobs are completed before the call terminates. If all jobs terminate cleanly error is nil; otherwise the first non-nil error is returned.
+The following functions are provided:
+* `RunConcurrently(jobs []ConcurrentJob) error`: takes an array of `ConcurrentJob`s and runs them concurrently ensuring that all jobs are completed before the call terminates. If all jobs terminate cleanly error is nil; otherwise the first non-nil error is returned.
+* `RunUntilFirstCompletion(jobs []ConcurrentJob) error`: takes an array of `ConcurrentJob`s and runs them concurrently but terminates after the completion of the earliest completing job. A key point here is that despite early termination it blocks until all jobs have terminated (ie. released any used resources). If all jobs terminate cleanly error is nil; otherwise the first non-nil error is returned.
+* `RunConcurrentlyWithTimeout(jobs []ConcurrentJob, timeout time.Duration) error`: is similar in behavior to `RunConcurrently` except it also takes a timeout and can cause the function to terminate earlier if timeout has expired. As before we wait for all jobs to have cleanly terminated.
+* `RunUntilFirstCompletionWithTimeout(jobs []ConcurrentJob, timeout time.Duration) error`: is similar in behavior to `RunUntilFirstCompletion` with an additional timeout clause.
 
-In addition we also have `RunUntilFirstCompletion(jobs []ConcurrentJob) error` that takes an array of ConcurrentJob types and runs them concurrently but terminates after the completion of the earliest completing job. The beauty is that despite the early termination it blocks until all jobs have terminated (ie. released any used resources). If all jobs terminate cleanly error is nil; otherwise the first non-nil error is returned.
+`ConcurrentJob` is a simple function that takes a context and error channel. We need to ensure that we're listening to the `Done()` channel on context and if invoked to clean-up resources and bail out. Errors are to be published to the error channel for proper handling.
 
-`ConcurrentJob` is a type that implements one function `Start` that takes a context and error channel as input. This is flipped into a helper function `ConcurrentJobFunc` that takes the same parameters but allows one to simply define a function as an input to `RunConcurrently`.
-
-The only heed we need to pay when working with these functions is to ensure that within `ConcurrentJob` the context is checked for cancellation (`<-ctx.Done()`); and if received we exit the function releasing any resources we might have used.
+Note: while this package simplifies the semantics of defining and executing concurrent code it cannot protect against bad concurrent programming such as using shared resources across jobs leading to data corruption or panics due to race conditions.

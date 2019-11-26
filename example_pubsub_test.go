@@ -38,6 +38,8 @@ func producerJob(ch chan int) ConcurrentJobFunc {
 
 func consumerJob(ch chan int, count int) ConcurrentJobFunc {
 	return func(ctx context.Context, errCh chan error) {
+		// we kick off count consumers - we could have wrapped them as ConcurrentJob
+		// and used RunConcurrently - but that would be overuse and make things less readable
 		wg := sync.WaitGroup{}
 		for i := 0; i < count; i++ {
 			wg.Add(1)
@@ -47,6 +49,8 @@ func consumerJob(ch chan int, count int) ConcurrentJobFunc {
 			}(i)
 		}
 		wg.Wait()
+		// In case consumers bailed out early due to errors ensure we're draining the
+		// producer challenge to unblock the producer
 		for range ch {
 		}
 	}
