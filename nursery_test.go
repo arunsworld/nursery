@@ -65,18 +65,18 @@ func TestRunConcurrently(t *testing.T) {
 		jobsOutput := [4]int{}
 
 		jobFastest := func(context.Context, chan error) {
-			jobsOutput[0]++
-			jobsDone[0] = true
+			jobsOutput[2]++
+			jobsDone[2] = true
 		}
 		jobSlower := func(context.Context, chan error) {
 			time.Sleep(time.Millisecond)
 			jobsOutput[0]++
-			jobsDone[1] = true
+			jobsDone[0] = true
 		}
 		jobSlowest := func(context.Context, chan error) {
 			time.Sleep(time.Millisecond * 5)
-			jobsOutput[0]++
-			jobsDone[2] = true
+			jobsOutput[1]++
+			jobsDone[1] = true
 		}
 		slowerJobWithErr := func(ctx context.Context, ch chan error) {
 			time.Sleep(time.Millisecond)
