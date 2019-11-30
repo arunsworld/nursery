@@ -20,7 +20,7 @@ func Example() {
 	}
 }
 
-func producerJob(ch chan int) ConcurrentJobFunc {
+func producerJob(ch chan int) ConcurrentJob {
 	return func(ctx context.Context, errCh chan error) {
 		defer close(ch)
 
@@ -36,7 +36,7 @@ func producerJob(ch chan int) ConcurrentJobFunc {
 	}
 }
 
-func consumerJob(ch chan int, count int) ConcurrentJobFunc {
+func consumerJob(ch chan int, count int) ConcurrentJob {
 	return func(ctx context.Context, errCh chan error) {
 		// we kick off count consumers - we could have wrapped them as ConcurrentJob
 		// and used RunConcurrently - but that would be overuse and make things less readable

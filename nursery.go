@@ -9,23 +9,12 @@ import (
 	"time"
 )
 
-// ConcurrentJob should be implemented to represent a job that can run concurrently to another.
+// ConcurrentJob contains procedural code that can run concurrently to another.
 // Please ensure that you're listening to `context.Done()` - at which point you're required to clean up and exit.
 // Publish any errors into the error channel but note that only the first error across the jobs will be returned.
 // Finally ensure that you're not unsafely modifying shared state without protection and using go's built in
 // channels for communicating rather than sharing memory.
-type ConcurrentJob interface {
-	Start(context.Context, chan error)
-}
-
-// ConcurrentJobFunc is the easiest way to implement ConcurrentJobs by providing a convenient way to
-// implement concurrently running logic.
-type ConcurrentJobFunc func(context.Context, chan error)
-
-// Start implemented to satisfy the ConcurrentJob interface.
-func (cjf ConcurrentJobFunc) Start(ctx context.Context, errCh chan error) {
-	cjf(ctx, errCh)
-}
+type ConcurrentJob func(context.Context, chan error)
 
 // RunConcurrently runs jobs concurrently until all jobs have either finished or any one job encountered an error.
 func RunConcurrently(jobs []ConcurrentJob) error {
@@ -162,7 +151,7 @@ func runJobsUntilAllDone(ctx context.Context, jobs []ConcurrentJob, errCh chan e
 	for _, job := range jobs {
 		wg.Add(1)
 		go func(job ConcurrentJob) {
-			job.Start(ctx, errCh)
+			job(ctx, errCh)
 			wg.Done()
 		}(job)
 	}
@@ -174,7 +163,7 @@ func runJobsUntilAtleastOneDone(ctx context.Context, cancel context.CancelFunc, 
 	for _, job := range jobs {
 		wg.Add(1)
 		go func(job ConcurrentJob) {
-			job.Start(ctx, errCh)
+			job(ctx, errCh)
 			cancel()
 			wg.Done()
 		}(job)

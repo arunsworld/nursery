@@ -8,26 +8,29 @@ import (
 	"time"
 )
 
-func ExampleConcurrentJobFunc() {
-	var job ConcurrentJobFunc = func(ctx context.Context, errCh chan error) {
-		delay := time.NewTimer(time.Second * 500)
-		select {
-		case <-ctx.Done():
-			delay.Stop()
-		case <-delay.C:
-		}
-	}
-
-	RunConcurrently([]ConcurrentJob{job})
+func ExampleConcurrentJob() {
+	RunConcurrently([]ConcurrentJob{
+		// Job 1
+		func(context.Context, chan error) {
+			time.Sleep(time.Millisecond * 10)
+			log.Println("Job 1 done...")
+		},
+		// Job 2
+		func(context.Context, chan error) {
+			time.Sleep(time.Millisecond * 5)
+			log.Println("Job 2 done...")
+		},
+	})
+	log.Println("All jobs done...")
 }
 
 func TestRunConcurrently(t *testing.T) {
 	t.Run("jobs without errors - we wait for the longest running one", func(t *testing.T) {
 		jobsDone := [3]bool{}
 
-		var jobFastest ConcurrentJobFunc = func(context.Context, chan error) { jobsDone[0] = true }
-		var jobSlower ConcurrentJobFunc = func(context.Context, chan error) { time.Sleep(time.Millisecond); jobsDone[1] = true }
-		var jobSlowest ConcurrentJobFunc = func(context.Context, chan error) { time.Sleep(time.Millisecond * 5); jobsDone[2] = true }
+		jobFastest := func(context.Context, chan error) { jobsDone[0] = true }
+		jobSlower := func(context.Context, chan error) { time.Sleep(time.Millisecond); jobsDone[1] = true }
+		jobSlowest := func(context.Context, chan error) { time.Sleep(time.Millisecond * 5); jobsDone[2] = true }
 
 		jobs := []ConcurrentJob{
 			jobSlower, jobSlowest, jobFastest,
@@ -61,21 +64,21 @@ func TestRunConcurrently(t *testing.T) {
 		jobsDone := [4]bool{}
 		jobsOutput := [4]int{}
 
-		var jobFastest ConcurrentJobFunc = func(context.Context, chan error) {
+		jobFastest := func(context.Context, chan error) {
 			jobsOutput[0]++
 			jobsDone[0] = true
 		}
-		var jobSlower ConcurrentJobFunc = func(context.Context, chan error) {
+		jobSlower := func(context.Context, chan error) {
 			time.Sleep(time.Millisecond)
 			jobsOutput[0]++
 			jobsDone[1] = true
 		}
-		var jobSlowest ConcurrentJobFunc = func(context.Context, chan error) {
+		jobSlowest := func(context.Context, chan error) {
 			time.Sleep(time.Millisecond * 5)
 			jobsOutput[0]++
 			jobsDone[2] = true
 		}
-		var slowerJobWithErr ConcurrentJobFunc = func(ctx context.Context, ch chan error) {
+		slowerJobWithErr := func(ctx context.Context, ch chan error) {
 			time.Sleep(time.Millisecond)
 			ch <- errors.New("slowerJobWithErr error")
 			jobsDone[3] = true
@@ -105,12 +108,12 @@ func TestRunConcurrently(t *testing.T) {
 		jobsDone := [2]bool{}
 		jobsOutput := [2]int{}
 
-		var jobWithErr ConcurrentJobFunc = func(ctx context.Context, ch chan error) {
+		jobWithErr := func(ctx context.Context, ch chan error) {
 			time.Sleep(time.Millisecond * 2)
 			ch <- errors.New("jobWithErr error")
 			jobsDone[0] = true
 		}
-		var neverEndingJob ConcurrentJobFunc = func(ctx context.Context, ch chan error) {
+		neverEndingJob := func(ctx context.Context, ch chan error) {
 			func() {
 				for {
 					select {
@@ -148,17 +151,17 @@ func TestRunConcurrently(t *testing.T) {
 		jobsDone := [3]bool{}
 		jobsOutput := [3]int{}
 
-		var jobWithErr ConcurrentJobFunc = func(ctx context.Context, ch chan error) {
+		jobWithErr := func(ctx context.Context, ch chan error) {
 			time.Sleep(time.Millisecond * 2)
 			ch <- errors.New("jobWithErr error")
 			jobsDone[0] = true
 		}
-		var jobWithAnotherErr ConcurrentJobFunc = func(ctx context.Context, ch chan error) {
+		jobWithAnotherErr := func(ctx context.Context, ch chan error) {
 			time.Sleep(time.Millisecond * 4)
 			ch <- errors.New("jobWithAnotherErr error")
 			jobsDone[2] = true
 		}
-		var neverEndingJob ConcurrentJobFunc = func(ctx context.Context, ch chan error) {
+		neverEndingJob := func(ctx context.Context, ch chan error) {
 			func() {
 				for {
 					select {
@@ -197,8 +200,8 @@ func TestRunUntilFirstCompletion(t *testing.T) {
 	t.Run("jobs without errors - we wait for the short running one", func(t *testing.T) {
 		jobsDone := [2]bool{}
 
-		var jobFastest ConcurrentJobFunc = func(context.Context, chan error) { jobsDone[0] = true }
-		var jobForever ConcurrentJobFunc = func(ctx context.Context, errCh chan error) {
+		jobFastest := func(context.Context, chan error) { jobsDone[0] = true }
+		jobForever := func(ctx context.Context, errCh chan error) {
 			delay := time.NewTimer(time.Second * 500)
 			select {
 			case <-ctx.Done():
@@ -227,12 +230,12 @@ func TestRunUntilFirstCompletion(t *testing.T) {
 		jobsDone := [2]bool{}
 		jobsOutput := [2]int{}
 
-		var jobWithErr ConcurrentJobFunc = func(ctx context.Context, ch chan error) {
+		jobWithErr := func(ctx context.Context, ch chan error) {
 			time.Sleep(time.Millisecond * 2)
 			ch <- errors.New("jobWithErr error")
 			jobsDone[0] = true
 		}
-		var neverEndingJob ConcurrentJobFunc = func(ctx context.Context, ch chan error) {
+		neverEndingJob := func(ctx context.Context, ch chan error) {
 			func() {
 				for {
 					select {
@@ -270,17 +273,17 @@ func TestRunUntilFirstCompletion(t *testing.T) {
 		jobsDone := [3]bool{}
 		jobsOutput := [3]int{}
 
-		var jobWithErr ConcurrentJobFunc = func(ctx context.Context, ch chan error) {
+		jobWithErr := func(ctx context.Context, ch chan error) {
 			time.Sleep(time.Millisecond * 2)
 			ch <- errors.New("jobWithErr error")
 			jobsDone[0] = true
 		}
-		var jobWithAnotherErr ConcurrentJobFunc = func(ctx context.Context, ch chan error) {
+		jobWithAnotherErr := func(ctx context.Context, ch chan error) {
 			time.Sleep(time.Millisecond * 4)
 			ch <- errors.New("jobWithAnotherErr error")
 			jobsDone[2] = true
 		}
-		var neverEndingJob ConcurrentJobFunc = func(ctx context.Context, ch chan error) {
+		neverEndingJob := func(ctx context.Context, ch chan error) {
 			func() {
 				for {
 					select {
@@ -320,7 +323,7 @@ func TestRunConcurrentlyWithTimeout(t *testing.T) {
 		jobsDone := [2]bool{}
 		jobsCount := [2]int{}
 
-		var jobForeverA ConcurrentJobFunc = func(ctx context.Context, errCh chan error) {
+		jobForeverA := func(ctx context.Context, errCh chan error) {
 			ticker := time.NewTicker(time.Millisecond)
 			func() {
 				for {
@@ -335,7 +338,7 @@ func TestRunConcurrentlyWithTimeout(t *testing.T) {
 			ticker.Stop()
 			jobsDone[0] = true
 		}
-		var jobForeverB ConcurrentJobFunc = func(ctx context.Context, errCh chan error) {
+		jobForeverB := func(ctx context.Context, errCh chan error) {
 			ticker := time.NewTicker(time.Millisecond)
 			func() {
 				for {
@@ -371,7 +374,7 @@ func TestRunConcurrentlyWithTimeout(t *testing.T) {
 		jobsDone := [2]bool{}
 		jobsCount := [2]int{}
 
-		var quickJobA ConcurrentJobFunc = func(ctx context.Context, errCh chan error) {
+		quickJobA := func(ctx context.Context, errCh chan error) {
 			ticker := time.NewTicker(time.Millisecond)
 			func() {
 				for i := 0; i < 5; i++ {
@@ -386,7 +389,7 @@ func TestRunConcurrentlyWithTimeout(t *testing.T) {
 			ticker.Stop()
 			jobsDone[0] = true
 		}
-		var notAsQuickJobB ConcurrentJobFunc = func(ctx context.Context, errCh chan error) {
+		notAsQuickJobB := func(ctx context.Context, errCh chan error) {
 			ticker := time.NewTicker(time.Millisecond)
 			func() {
 				for i := 0; i < 10; i++ {
@@ -423,12 +426,12 @@ func TestRunConcurrentlyWithTimeout(t *testing.T) {
 		jobsDone := [2]bool{}
 		jobsOutput := [2]int{}
 
-		var jobWithErr ConcurrentJobFunc = func(ctx context.Context, ch chan error) {
+		jobWithErr := func(ctx context.Context, ch chan error) {
 			time.Sleep(time.Millisecond * 2)
 			ch <- errors.New("jobWithErr error")
 			jobsDone[0] = true
 		}
-		var neverEndingJob ConcurrentJobFunc = func(ctx context.Context, ch chan error) {
+		neverEndingJob := func(ctx context.Context, ch chan error) {
 			func() {
 				for {
 					select {
@@ -466,17 +469,17 @@ func TestRunConcurrentlyWithTimeout(t *testing.T) {
 		jobsDone := [3]bool{}
 		jobsOutput := [3]int{}
 
-		var jobWithErr ConcurrentJobFunc = func(ctx context.Context, ch chan error) {
+		jobWithErr := func(ctx context.Context, ch chan error) {
 			time.Sleep(time.Millisecond * 2)
 			ch <- errors.New("jobWithErr error")
 			jobsDone[0] = true
 		}
-		var jobWithAnotherErr ConcurrentJobFunc = func(ctx context.Context, ch chan error) {
+		jobWithAnotherErr := func(ctx context.Context, ch chan error) {
 			time.Sleep(time.Millisecond * 4)
 			ch <- errors.New("jobWithAnotherErr error")
 			jobsDone[2] = true
 		}
-		var neverEndingJob ConcurrentJobFunc = func(ctx context.Context, ch chan error) {
+		neverEndingJob := func(ctx context.Context, ch chan error) {
 			func() {
 				for {
 					select {
@@ -516,7 +519,7 @@ func TestRunUntilFirstCompletionWithTimeout(t *testing.T) {
 		jobsDone := [2]bool{}
 		jobsCount := [2]int{}
 
-		var jobForeverA ConcurrentJobFunc = func(ctx context.Context, errCh chan error) {
+		jobForeverA := func(ctx context.Context, errCh chan error) {
 			ticker := time.NewTicker(time.Millisecond)
 			func() {
 				for {
@@ -531,7 +534,7 @@ func TestRunUntilFirstCompletionWithTimeout(t *testing.T) {
 			ticker.Stop()
 			jobsDone[0] = true
 		}
-		var jobForeverB ConcurrentJobFunc = func(ctx context.Context, errCh chan error) {
+		jobForeverB := func(ctx context.Context, errCh chan error) {
 			ticker := time.NewTicker(time.Millisecond)
 			func() {
 				for {
@@ -567,7 +570,7 @@ func TestRunUntilFirstCompletionWithTimeout(t *testing.T) {
 		jobsDone := [2]bool{}
 		jobsCount := [2]int{}
 
-		var quickJobA ConcurrentJobFunc = func(ctx context.Context, errCh chan error) {
+		quickJobA := func(ctx context.Context, errCh chan error) {
 			ticker := time.NewTicker(time.Millisecond)
 			func() {
 				for i := 0; i < 5; i++ {
@@ -582,7 +585,7 @@ func TestRunUntilFirstCompletionWithTimeout(t *testing.T) {
 			ticker.Stop()
 			jobsDone[0] = true
 		}
-		var notAsQuickJobB ConcurrentJobFunc = func(ctx context.Context, errCh chan error) {
+		notAsQuickJobB := func(ctx context.Context, errCh chan error) {
 			ticker := time.NewTicker(time.Millisecond)
 			func() {
 				for i := 0; i < 100; i++ {
@@ -619,12 +622,12 @@ func TestRunUntilFirstCompletionWithTimeout(t *testing.T) {
 		jobsDone := [2]bool{}
 		jobsOutput := [2]int{}
 
-		var jobWithErr ConcurrentJobFunc = func(ctx context.Context, ch chan error) {
+		jobWithErr := func(ctx context.Context, ch chan error) {
 			time.Sleep(time.Millisecond * 2)
 			ch <- errors.New("jobWithErr error")
 			jobsDone[0] = true
 		}
-		var neverEndingJob ConcurrentJobFunc = func(ctx context.Context, ch chan error) {
+		neverEndingJob := func(ctx context.Context, ch chan error) {
 			func() {
 				for {
 					select {
@@ -662,17 +665,17 @@ func TestRunUntilFirstCompletionWithTimeout(t *testing.T) {
 		jobsDone := [3]bool{}
 		jobsOutput := [3]int{}
 
-		var jobWithErr ConcurrentJobFunc = func(ctx context.Context, ch chan error) {
+		jobWithErr := func(ctx context.Context, ch chan error) {
 			time.Sleep(time.Millisecond * 2)
 			ch <- errors.New("jobWithErr error")
 			jobsDone[0] = true
 		}
-		var jobWithAnotherErr ConcurrentJobFunc = func(ctx context.Context, ch chan error) {
+		jobWithAnotherErr := func(ctx context.Context, ch chan error) {
 			time.Sleep(time.Millisecond * 4)
 			ch <- errors.New("jobWithAnotherErr error")
 			jobsDone[2] = true
 		}
-		var neverEndingJob ConcurrentJobFunc = func(ctx context.Context, ch chan error) {
+		neverEndingJob := func(ctx context.Context, ch chan error) {
 			func() {
 				for {
 					select {
