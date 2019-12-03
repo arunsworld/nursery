@@ -11,10 +11,7 @@ import (
 
 func Example() {
 	ch := make(chan int)
-	err := RunConcurrently([]ConcurrentJob{
-		producerJob(ch),
-		consumerJob(ch, 5),
-	})
+	err := RunConcurrently(producerJob(ch), consumerJob(ch, 5))
 	if err != nil {
 		log.Fatal(err)
 	}

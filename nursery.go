@@ -17,7 +17,7 @@ import (
 type ConcurrentJob func(context.Context, chan error)
 
 // RunConcurrently runs jobs concurrently until all jobs have either finished or any one job encountered an error.
-func RunConcurrently(jobs []ConcurrentJob) error {
+func RunConcurrently(jobs ...ConcurrentJob) error {
 	var result error
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -39,7 +39,7 @@ func RunConcurrently(jobs []ConcurrentJob) error {
 }
 
 // RunUntilFirstCompletion runs jobs concurrently until atleast one job has finished or any job has encountered an error.
-func RunUntilFirstCompletion(jobs []ConcurrentJob) error {
+func RunUntilFirstCompletion(jobs ...ConcurrentJob) error {
 	var result error
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -62,7 +62,7 @@ func RunUntilFirstCompletion(jobs []ConcurrentJob) error {
 
 // RunConcurrentlyWithTimeout runs jobs concurrently until all jobs have either finished or any one job encountered an error.
 // or the timeout has expired
-func RunConcurrentlyWithTimeout(jobs []ConcurrentJob, timeout time.Duration) error {
+func RunConcurrentlyWithTimeout(timeout time.Duration, jobs ...ConcurrentJob) error {
 	var result error
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -99,7 +99,7 @@ func RunConcurrentlyWithTimeout(jobs []ConcurrentJob, timeout time.Duration) err
 
 // RunUntilFirstCompletionWithTimeout runs jobs concurrently until atleast one job has finished or any job has encountered an error
 // or the timeout has expired.
-func RunUntilFirstCompletionWithTimeout(jobs []ConcurrentJob, timeout time.Duration) error {
+func RunUntilFirstCompletionWithTimeout(timeout time.Duration, jobs ...ConcurrentJob) error {
 	var result error
 
 	ctx, cancel := context.WithCancel(context.Background())

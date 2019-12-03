@@ -9,7 +9,7 @@ import (
 )
 
 func ExampleConcurrentJob() {
-	RunConcurrently([]ConcurrentJob{
+	RunConcurrently(
 		// Job 1
 		func(context.Context, chan error) {
 			time.Sleep(time.Millisecond * 10)
@@ -20,7 +20,7 @@ func ExampleConcurrentJob() {
 			time.Sleep(time.Millisecond * 5)
 			log.Println("Job 2 done...")
 		},
-	})
+	)
 	log.Println("All jobs done...")
 }
 
@@ -36,7 +36,7 @@ func TestRunConcurrently(t *testing.T) {
 			jobSlower, jobSlowest, jobFastest,
 		}
 
-		err := RunConcurrently(jobs)
+		err := RunConcurrently(jobs...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -50,7 +50,7 @@ func TestRunConcurrently(t *testing.T) {
 			jobFastest, jobSlower, jobSlowest,
 		}
 
-		err = RunConcurrently(jobs)
+		err = RunConcurrently(jobs...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -84,11 +84,7 @@ func TestRunConcurrently(t *testing.T) {
 			jobsDone[3] = true
 		}
 
-		jobs := []ConcurrentJob{
-			jobSlower, jobSlowest, jobFastest, slowerJobWithErr,
-		}
-
-		err := RunConcurrently(jobs)
+		err := RunConcurrently(jobSlower, jobSlowest, jobFastest, slowerJobWithErr)
 
 		if jobsDone != [4]bool{true, true, true, true} {
 			t.Fatalf("expected all jobs to be done but instead got: %v", jobsDone)
@@ -128,11 +124,7 @@ func TestRunConcurrently(t *testing.T) {
 			jobsDone[1] = true
 		}
 
-		jobs := []ConcurrentJob{
-			jobWithErr, neverEndingJob,
-		}
-
-		err := RunConcurrently(jobs)
+		err := RunConcurrently(jobWithErr, neverEndingJob)
 
 		if jobsDone != [2]bool{true, true} {
 			t.Fatalf("expected all jobs to be done but instead got: %v", jobsDone)
@@ -176,11 +168,7 @@ func TestRunConcurrently(t *testing.T) {
 			jobsDone[1] = true
 		}
 
-		jobs := []ConcurrentJob{
-			jobWithErr, neverEndingJob, jobWithAnotherErr,
-		}
-
-		err := RunConcurrently(jobs)
+		err := RunConcurrently(jobWithErr, neverEndingJob, jobWithAnotherErr)
 
 		if jobsDone != [3]bool{true, true, true} {
 			t.Fatalf("expected all jobs to be done but instead got: %v", jobsDone)
@@ -211,11 +199,7 @@ func TestRunUntilFirstCompletion(t *testing.T) {
 			jobsDone[1] = true
 		}
 
-		jobs := []ConcurrentJob{
-			jobFastest, jobForever,
-		}
-
-		err := RunUntilFirstCompletion(jobs)
+		err := RunUntilFirstCompletion(jobFastest, jobForever)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -250,11 +234,7 @@ func TestRunUntilFirstCompletion(t *testing.T) {
 			jobsDone[1] = true
 		}
 
-		jobs := []ConcurrentJob{
-			jobWithErr, neverEndingJob,
-		}
-
-		err := RunUntilFirstCompletion(jobs)
+		err := RunUntilFirstCompletion(jobWithErr, neverEndingJob)
 
 		if jobsDone != [2]bool{true, true} {
 			t.Fatalf("expected all jobs to be done but instead got: %v", jobsDone)
@@ -298,11 +278,7 @@ func TestRunUntilFirstCompletion(t *testing.T) {
 			jobsDone[1] = true
 		}
 
-		jobs := []ConcurrentJob{
-			jobWithErr, neverEndingJob, jobWithAnotherErr,
-		}
-
-		err := RunUntilFirstCompletion(jobs)
+		err := RunUntilFirstCompletion(jobWithErr, neverEndingJob, jobWithAnotherErr)
 
 		if jobsDone != [3]bool{true, true, true} {
 			t.Fatalf("expected all jobs to be done but instead got: %v", jobsDone)
@@ -354,9 +330,7 @@ func TestRunConcurrentlyWithTimeout(t *testing.T) {
 			jobsDone[1] = true
 		}
 
-		jobs := []ConcurrentJob{jobForeverA, jobForeverB}
-
-		err := RunConcurrentlyWithTimeout(jobs, time.Millisecond*10)
+		err := RunConcurrentlyWithTimeout(time.Millisecond*10, jobForeverA, jobForeverB)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -405,9 +379,7 @@ func TestRunConcurrentlyWithTimeout(t *testing.T) {
 			jobsDone[1] = true
 		}
 
-		jobs := []ConcurrentJob{quickJobA, notAsQuickJobB}
-
-		err := RunConcurrentlyWithTimeout(jobs, time.Second)
+		err := RunConcurrentlyWithTimeout(time.Second, quickJobA, notAsQuickJobB)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -446,11 +418,7 @@ func TestRunConcurrentlyWithTimeout(t *testing.T) {
 			jobsDone[1] = true
 		}
 
-		jobs := []ConcurrentJob{
-			jobWithErr, neverEndingJob,
-		}
-
-		err := RunConcurrentlyWithTimeout(jobs, time.Second)
+		err := RunConcurrentlyWithTimeout(time.Second, jobWithErr, neverEndingJob)
 
 		if jobsDone != [2]bool{true, true} {
 			t.Fatalf("expected all jobs to be done but instead got: %v", jobsDone)
@@ -494,11 +462,7 @@ func TestRunConcurrentlyWithTimeout(t *testing.T) {
 			jobsDone[1] = true
 		}
 
-		jobs := []ConcurrentJob{
-			jobWithErr, neverEndingJob, jobWithAnotherErr,
-		}
-
-		err := RunConcurrentlyWithTimeout(jobs, time.Second)
+		err := RunConcurrentlyWithTimeout(time.Second, jobWithErr, neverEndingJob, jobWithAnotherErr)
 
 		if jobsDone != [3]bool{true, true, true} {
 			t.Fatalf("expected all jobs to be done but instead got: %v", jobsDone)
@@ -550,9 +514,7 @@ func TestRunUntilFirstCompletionWithTimeout(t *testing.T) {
 			jobsDone[1] = true
 		}
 
-		jobs := []ConcurrentJob{jobForeverA, jobForeverB}
-
-		err := RunUntilFirstCompletionWithTimeout(jobs, time.Millisecond*10)
+		err := RunUntilFirstCompletionWithTimeout(time.Millisecond*10, jobForeverA, jobForeverB)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -601,9 +563,7 @@ func TestRunUntilFirstCompletionWithTimeout(t *testing.T) {
 			jobsDone[1] = true
 		}
 
-		jobs := []ConcurrentJob{quickJobA, notAsQuickJobB}
-
-		err := RunUntilFirstCompletionWithTimeout(jobs, time.Millisecond*10)
+		err := RunUntilFirstCompletionWithTimeout(time.Millisecond*10, quickJobA, notAsQuickJobB)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -642,11 +602,7 @@ func TestRunUntilFirstCompletionWithTimeout(t *testing.T) {
 			jobsDone[1] = true
 		}
 
-		jobs := []ConcurrentJob{
-			jobWithErr, neverEndingJob,
-		}
-
-		err := RunUntilFirstCompletionWithTimeout(jobs, time.Second)
+		err := RunUntilFirstCompletionWithTimeout(time.Second, jobWithErr, neverEndingJob)
 
 		if jobsDone != [2]bool{true, true} {
 			t.Fatalf("expected all jobs to be done but instead got: %v", jobsDone)
@@ -694,7 +650,7 @@ func TestRunUntilFirstCompletionWithTimeout(t *testing.T) {
 			jobWithErr, neverEndingJob, jobWithAnotherErr,
 		}
 
-		err := RunUntilFirstCompletionWithTimeout(jobs, time.Second)
+		err := RunUntilFirstCompletionWithTimeout(time.Second, jobs...)
 
 		if jobsDone != [3]bool{true, true, true} {
 			t.Fatalf("expected all jobs to be done but instead got: %v", jobsDone)

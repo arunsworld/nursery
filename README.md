@@ -5,7 +5,7 @@
 <a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-100%25-brightgreen.svg?longCache=true&style=flat)</a>
 
 ```go
-RunConcurrently([]ConcurrentJob{
+RunConcurrently(
     // Job 1
     func(context.Context, chan error) {
         time.Sleep(time.Millisecond * 10)
@@ -16,7 +16,7 @@ RunConcurrently([]ConcurrentJob{
         time.Sleep(time.Millisecond * 5)
         log.Println("Job 2 done...")
     },
-})
+)
 log.Println("All jobs done...")
 ```
 
@@ -27,10 +27,10 @@ While I don't necessarily agree with the entire content I can appreciate that ev
 Implementing a higher-level abstraction for the use-cases mentioned is very straightforward in Go and this simple package provides just that.
 
 The following functions are provided:
-* `RunConcurrently(jobs []ConcurrentJob) error`: takes an array of `ConcurrentJob`s and runs them concurrently ensuring that all jobs are completed before the call terminates. If all jobs terminate cleanly error is nil; otherwise the first non-nil error is returned.
-* `RunUntilFirstCompletion(jobs []ConcurrentJob) error`: takes an array of `ConcurrentJob`s and runs them concurrently but terminates after the completion of the earliest completing job. A key point here is that despite early termination it blocks until all jobs have terminated (ie. released any used resources). If all jobs terminate cleanly error is nil; otherwise the first non-nil error is returned.
-* `RunConcurrentlyWithTimeout(jobs []ConcurrentJob, timeout time.Duration) error`: is similar in behavior to `RunConcurrently` except it also takes a timeout and can cause the function to terminate earlier if timeout has expired. As before we wait for all jobs to have cleanly terminated.
-* `RunUntilFirstCompletionWithTimeout(jobs []ConcurrentJob, timeout time.Duration) error`: is similar in behavior to `RunUntilFirstCompletion` with an additional timeout clause.
+* `RunConcurrently(jobs ...ConcurrentJob) error`: takes an array of `ConcurrentJob`s and runs them concurrently ensuring that all jobs are completed before the call terminates. If all jobs terminate cleanly error is nil; otherwise the first non-nil error is returned.
+* `RunUntilFirstCompletion(jobs ...ConcurrentJob) error`: takes an array of `ConcurrentJob`s and runs them concurrently but terminates after the completion of the earliest completing job. A key point here is that despite early termination it blocks until all jobs have terminated (ie. released any used resources). If all jobs terminate cleanly error is nil; otherwise the first non-nil error is returned.
+* `RunConcurrentlyWithTimeout(timeout time.Duration, jobs ...ConcurrentJob) error`: is similar in behavior to `RunConcurrently` except it also takes a timeout and can cause the function to terminate earlier if timeout has expired. As before we wait for all jobs to have cleanly terminated.
+* `RunUntilFirstCompletionWithTimeout(timeout time.Duration, jobs ...ConcurrentJob) error`: is similar in behavior to `RunUntilFirstCompletion` with an additional timeout clause.
 
 `ConcurrentJob` is a simple function that takes a context and error channel. We need to ensure that we're listening to the `Done()` channel on context and if invoked to clean-up resources and bail out. Errors are to be published to the error channel for proper handling.
 
