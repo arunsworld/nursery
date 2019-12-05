@@ -28,7 +28,9 @@ Implementing a higher-level abstraction for the use-cases mentioned is very stra
 
 The following functions are provided:
 * `RunConcurrently(jobs ...ConcurrentJob) error`: takes an array of `ConcurrentJob`s and runs them concurrently ensuring that all jobs are completed before the call terminates. If all jobs terminate cleanly error is nil; otherwise the first non-nil error is returned.
+* `RunConcurrentlyWithContext(parentCtx context.Context, jobs ...ConcurrentJob) error`: is the RunConcurrently behavior but additionally wraps a context that's passed in allowing cancellations of the parentCtx to get propagated.
 * `RunUntilFirstCompletion(jobs ...ConcurrentJob) error`: takes an array of `ConcurrentJob`s and runs them concurrently but terminates after the completion of the earliest completing job. A key point here is that despite early termination it blocks until all jobs have terminated (ie. released any used resources). If all jobs terminate cleanly error is nil; otherwise the first non-nil error is returned.
+* `RunUntilFirstCompletionWithContext(parentCtx context.Context, jobs ...ConcurrentJob) error`: is the RunUntilFirstCompletion behavior but additionally wraps a context that's passed in allowing cancellations of the parentCtx to get propagated.
 * `RunConcurrentlyWithTimeout(timeout time.Duration, jobs ...ConcurrentJob) error`: is similar in behavior to `RunConcurrently` except it also takes a timeout and can cause the function to terminate earlier if timeout has expired. As before we wait for all jobs to have cleanly terminated.
 * `RunUntilFirstCompletionWithTimeout(timeout time.Duration, jobs ...ConcurrentJob) error`: is similar in behavior to `RunUntilFirstCompletion` with an additional timeout clause.
 

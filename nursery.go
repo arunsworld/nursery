@@ -18,9 +18,15 @@ type ConcurrentJob func(context.Context, chan error)
 
 // RunConcurrently runs jobs concurrently until all jobs have either finished or any one job encountered an error.
 func RunConcurrently(jobs ...ConcurrentJob) error {
+	return RunConcurrentlyWithContext(context.Background(), jobs...)
+}
+
+// RunConcurrentlyWithContext runs jobs concurrently until all jobs have either finished or any one job encountered an error.
+// It wraps the parent context - so if the parent context is Done the jobs get the signal to wrap up
+func RunConcurrentlyWithContext(parentCtx context.Context, jobs ...ConcurrentJob) error {
 	var result error
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(parentCtx)
 
 	errCh := make(chan error, 10)
 	waitForErrCompletion := sync.WaitGroup{}
@@ -40,9 +46,14 @@ func RunConcurrently(jobs ...ConcurrentJob) error {
 
 // RunUntilFirstCompletion runs jobs concurrently until atleast one job has finished or any job has encountered an error.
 func RunUntilFirstCompletion(jobs ...ConcurrentJob) error {
+	return RunUntilFirstCompletionWithContext(context.Background(), jobs...)
+}
+
+// RunUntilFirstCompletionWithContext runs jobs concurrently until atleast one job has finished or any job has encountered an error.
+func RunUntilFirstCompletionWithContext(parentCtx context.Context, jobs ...ConcurrentJob) error {
 	var result error
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(parentCtx)
 
 	errCh := make(chan error, 10)
 	waitForErrCompletion := sync.WaitGroup{}
@@ -63,75 +74,19 @@ func RunUntilFirstCompletion(jobs ...ConcurrentJob) error {
 // RunConcurrentlyWithTimeout runs jobs concurrently until all jobs have either finished or any one job encountered an error.
 // or the timeout has expired
 func RunConcurrentlyWithTimeout(timeout time.Duration, jobs ...ConcurrentJob) error {
-	var result error
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
-	ctx, cancel := context.WithCancel(context.Background())
-
-	errCh := make(chan error, 10)
-	waitForErrCompletion := sync.WaitGroup{}
-	waitForErrCompletion.Add(1)
-	go func() {
-		result = cancelOnFirstError(cancel, errCh)
-		waitForErrCompletion.Done()
-	}()
-
-	timeoutTimer := time.NewTimer(timeout)
-	jobCompletionCh := make(chan struct{})
-
-	go func() {
-		runJobsUntilAllDone(ctx, jobs, errCh)
-		jobCompletionCh <- struct{}{}
-	}()
-
-	select {
-	case <-timeoutTimer.C:
-		cancel()
-		<-jobCompletionCh
-	case <-jobCompletionCh:
-		timeoutTimer.Stop()
-	}
-
-	close(errCh)
-	waitForErrCompletion.Wait()
-
-	return result
+	return RunConcurrentlyWithContext(ctx, jobs...)
 }
 
 // RunUntilFirstCompletionWithTimeout runs jobs concurrently until atleast one job has finished or any job has encountered an error
 // or the timeout has expired.
 func RunUntilFirstCompletionWithTimeout(timeout time.Duration, jobs ...ConcurrentJob) error {
-	var result error
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
-	ctx, cancel := context.WithCancel(context.Background())
-
-	errCh := make(chan error, 10)
-	waitForErrCompletion := sync.WaitGroup{}
-	waitForErrCompletion.Add(1)
-	go func() {
-		result = cancelOnFirstError(cancel, errCh)
-		waitForErrCompletion.Done()
-	}()
-
-	timeoutTimer := time.NewTimer(timeout)
-	jobCompletionCh := make(chan struct{})
-
-	go func() {
-		runJobsUntilAtleastOneDone(ctx, cancel, jobs, errCh)
-		jobCompletionCh <- struct{}{}
-	}()
-
-	select {
-	case <-timeoutTimer.C:
-		cancel()
-		<-jobCompletionCh
-	case <-jobCompletionCh:
-		timeoutTimer.Stop()
-	}
-
-	close(errCh)
-	waitForErrCompletion.Wait()
-
-	return result
+	return RunUntilFirstCompletionWithContext(ctx, jobs...)
 }
 
 func cancelOnFirstError(cancel context.CancelFunc, errCh chan error) error {

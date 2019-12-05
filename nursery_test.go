@@ -665,3 +665,117 @@ func TestRunUntilFirstCompletionWithTimeout(t *testing.T) {
 		}
 	})
 }
+
+func TestRunConcurrentlyWithContext(t *testing.T) {
+	t.Run("jobs without errors - parent context cancellation stops running processes", func(t *testing.T) {
+		jobsDone := [2]bool{}
+		jobsCount := [2]int{}
+
+		jobForeverA := func(ctx context.Context, errCh chan error) {
+			ticker := time.NewTicker(time.Millisecond)
+			func() {
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case <-ticker.C:
+						jobsCount[0]++
+					}
+				}
+			}()
+			ticker.Stop()
+			jobsDone[0] = true
+		}
+		jobForeverB := func(ctx context.Context, errCh chan error) {
+			ticker := time.NewTicker(time.Millisecond)
+			func() {
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case <-ticker.C:
+						jobsCount[1]++
+					}
+				}
+			}()
+			ticker.Stop()
+			jobsDone[1] = true
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			time.Sleep(time.Millisecond * 10)
+			cancel()
+		}()
+
+		err := RunConcurrentlyWithContext(ctx, jobForeverA, jobForeverB)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if jobsDone != [2]bool{true, true} {
+			t.Fatalf("expected all jobs to be done but instead got: %v", jobsDone)
+		}
+
+		if jobsCount[0]+jobsCount[1] < 18 || jobsCount[0]+jobsCount[1] > 25 {
+			t.Fatalf("jobsCount out of range. Expected 18 < total < 25 but got: %v", jobsCount)
+		}
+	})
+}
+
+func TestRunUntilFirstCompletionWithContext(t *testing.T) {
+	t.Run("jobs without errors - parent context cancellation stops running processes", func(t *testing.T) {
+		jobsDone := [2]bool{}
+		jobsCount := [2]int{}
+
+		jobForeverA := func(ctx context.Context, errCh chan error) {
+			ticker := time.NewTicker(time.Millisecond)
+			func() {
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case <-ticker.C:
+						jobsCount[0]++
+					}
+				}
+			}()
+			ticker.Stop()
+			jobsDone[0] = true
+		}
+		jobForeverB := func(ctx context.Context, errCh chan error) {
+			ticker := time.NewTicker(time.Millisecond)
+			func() {
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case <-ticker.C:
+						jobsCount[1]++
+					}
+				}
+			}()
+			ticker.Stop()
+			jobsDone[1] = true
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			time.Sleep(time.Millisecond * 10)
+			cancel()
+		}()
+
+		err := RunUntilFirstCompletionWithContext(ctx, jobForeverA, jobForeverB)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if jobsDone != [2]bool{true, true} {
+			t.Fatalf("expected all jobs to be done but instead got: %v", jobsDone)
+		}
+
+		if jobsCount[0]+jobsCount[1] < 18 || jobsCount[0]+jobsCount[1] > 25 {
+			t.Fatalf("jobsCount out of range. Expected 18 < total < 25 but got: %v", jobsCount)
+		}
+	})
+}
