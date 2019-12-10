@@ -16,11 +16,6 @@ import (
 // channels for communicating rather than sharing memory.
 type ConcurrentJob func(context.Context, chan error)
 
-// RunConcurrently runs jobs concurrently until all jobs have either finished or any one job encountered an error.
-func RunConcurrently(jobs ...ConcurrentJob) error {
-	return RunConcurrentlyWithContext(context.Background(), jobs...)
-}
-
 // RunConcurrentlyWithContext runs jobs concurrently until all jobs have either finished or any one job encountered an error.
 // It wraps the parent context - so if the parent context is Done the jobs get the signal to wrap up
 func RunConcurrentlyWithContext(parentCtx context.Context, jobs ...ConcurrentJob) error {
@@ -42,6 +37,39 @@ func RunConcurrentlyWithContext(parentCtx context.Context, jobs ...ConcurrentJob
 	waitForErrCompletion.Wait()
 
 	return result
+}
+
+// RunConcurrently runs jobs concurrently until all jobs have either finished or any one job encountered an error.
+func RunConcurrently(jobs ...ConcurrentJob) error {
+	return RunConcurrentlyWithContext(context.Background(), jobs...)
+}
+
+// JobID is the key used to identify the JobID from the context for jobs running in copies
+const JobID = jobIDKey("id")
+
+type jobIDKey string
+
+// RunMultipleCopiesConcurrentlyWithContext runs multiple copies of the given job until they have all finished or any
+// one has encountered an error. The passed context can be optionally checked for an int value with key JobID counting up from 0
+// to identify uniquely the copy that is run.
+// It wraps the parent context - so if the parent context is Done the jobs get the signal to wrap up
+func RunMultipleCopiesConcurrentlyWithContext(ctx context.Context, copies int, job ConcurrentJob) error {
+	jobs := make([]ConcurrentJob, 0, copies)
+	for i := 0; i < copies; i++ {
+		idOfCopy := i
+		jobs = append(jobs, func(ctx context.Context, errCh chan error) {
+			ctx = context.WithValue(ctx, JobID, idOfCopy)
+			job(ctx, errCh)
+		})
+	}
+	return RunConcurrentlyWithContext(ctx, jobs...)
+}
+
+// RunMultipleCopiesConcurrently runs multiple copies of the given job until they have all finished or any
+// one has encountered an error. The passed context can be optionally checked for an int value with key JobID counting up from 0
+// to identify uniquely the copy that is run.
+func RunMultipleCopiesConcurrently(copies int, job ConcurrentJob) error {
+	return RunMultipleCopiesConcurrentlyWithContext(context.Background(), copies, job)
 }
 
 // RunUntilFirstCompletion runs jobs concurrently until atleast one job has finished or any job has encountered an error.

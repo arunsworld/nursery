@@ -1,15 +1,19 @@
-package nursery
+package nursery_test
 
 import (
 	"context"
 	"errors"
 	"log"
+	"reflect"
+	"sync"
 	"testing"
 	"time"
+
+	"github.com/arunsworld/nursery"
 )
 
 func ExampleConcurrentJob() {
-	RunConcurrently(
+	nursery.RunConcurrently(
 		// Job 1
 		func(context.Context, chan error) {
 			time.Sleep(time.Millisecond * 10)
@@ -32,11 +36,11 @@ func TestRunConcurrently(t *testing.T) {
 		jobSlower := func(context.Context, chan error) { time.Sleep(time.Millisecond); jobsDone[1] = true }
 		jobSlowest := func(context.Context, chan error) { time.Sleep(time.Millisecond * 5); jobsDone[2] = true }
 
-		jobs := []ConcurrentJob{
+		jobs := []nursery.ConcurrentJob{
 			jobSlower, jobSlowest, jobFastest,
 		}
 
-		err := RunConcurrently(jobs...)
+		err := nursery.RunConcurrently(jobs...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -46,11 +50,11 @@ func TestRunConcurrently(t *testing.T) {
 		}
 
 		// Now in a difference sequence
-		jobs = []ConcurrentJob{
+		jobs = []nursery.ConcurrentJob{
 			jobFastest, jobSlower, jobSlowest,
 		}
 
-		err = RunConcurrently(jobs...)
+		err = nursery.RunConcurrently(jobs...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -84,7 +88,7 @@ func TestRunConcurrently(t *testing.T) {
 			jobsDone[3] = true
 		}
 
-		err := RunConcurrently(jobSlower, jobSlowest, jobFastest, slowerJobWithErr)
+		err := nursery.RunConcurrently(jobSlower, jobSlowest, jobFastest, slowerJobWithErr)
 
 		if jobsDone != [4]bool{true, true, true, true} {
 			t.Fatalf("expected all jobs to be done but instead got: %v", jobsDone)
@@ -124,7 +128,7 @@ func TestRunConcurrently(t *testing.T) {
 			jobsDone[1] = true
 		}
 
-		err := RunConcurrently(jobWithErr, neverEndingJob)
+		err := nursery.RunConcurrently(jobWithErr, neverEndingJob)
 
 		if jobsDone != [2]bool{true, true} {
 			t.Fatalf("expected all jobs to be done but instead got: %v", jobsDone)
@@ -168,7 +172,7 @@ func TestRunConcurrently(t *testing.T) {
 			jobsDone[1] = true
 		}
 
-		err := RunConcurrently(jobWithErr, neverEndingJob, jobWithAnotherErr)
+		err := nursery.RunConcurrently(jobWithErr, neverEndingJob, jobWithAnotherErr)
 
 		if jobsDone != [3]bool{true, true, true} {
 			t.Fatalf("expected all jobs to be done but instead got: %v", jobsDone)
@@ -199,7 +203,7 @@ func TestRunUntilFirstCompletion(t *testing.T) {
 			jobsDone[1] = true
 		}
 
-		err := RunUntilFirstCompletion(jobFastest, jobForever)
+		err := nursery.RunUntilFirstCompletion(jobFastest, jobForever)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -234,7 +238,7 @@ func TestRunUntilFirstCompletion(t *testing.T) {
 			jobsDone[1] = true
 		}
 
-		err := RunUntilFirstCompletion(jobWithErr, neverEndingJob)
+		err := nursery.RunUntilFirstCompletion(jobWithErr, neverEndingJob)
 
 		if jobsDone != [2]bool{true, true} {
 			t.Fatalf("expected all jobs to be done but instead got: %v", jobsDone)
@@ -278,7 +282,7 @@ func TestRunUntilFirstCompletion(t *testing.T) {
 			jobsDone[1] = true
 		}
 
-		err := RunUntilFirstCompletion(jobWithErr, neverEndingJob, jobWithAnotherErr)
+		err := nursery.RunUntilFirstCompletion(jobWithErr, neverEndingJob, jobWithAnotherErr)
 
 		if jobsDone != [3]bool{true, true, true} {
 			t.Fatalf("expected all jobs to be done but instead got: %v", jobsDone)
@@ -330,7 +334,7 @@ func TestRunConcurrentlyWithTimeout(t *testing.T) {
 			jobsDone[1] = true
 		}
 
-		err := RunConcurrentlyWithTimeout(time.Millisecond*10, jobForeverA, jobForeverB)
+		err := nursery.RunConcurrentlyWithTimeout(time.Millisecond*10, jobForeverA, jobForeverB)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -379,7 +383,7 @@ func TestRunConcurrentlyWithTimeout(t *testing.T) {
 			jobsDone[1] = true
 		}
 
-		err := RunConcurrentlyWithTimeout(time.Second, quickJobA, notAsQuickJobB)
+		err := nursery.RunConcurrentlyWithTimeout(time.Second, quickJobA, notAsQuickJobB)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -418,7 +422,7 @@ func TestRunConcurrentlyWithTimeout(t *testing.T) {
 			jobsDone[1] = true
 		}
 
-		err := RunConcurrentlyWithTimeout(time.Second, jobWithErr, neverEndingJob)
+		err := nursery.RunConcurrentlyWithTimeout(time.Second, jobWithErr, neverEndingJob)
 
 		if jobsDone != [2]bool{true, true} {
 			t.Fatalf("expected all jobs to be done but instead got: %v", jobsDone)
@@ -462,7 +466,7 @@ func TestRunConcurrentlyWithTimeout(t *testing.T) {
 			jobsDone[1] = true
 		}
 
-		err := RunConcurrentlyWithTimeout(time.Second, jobWithErr, neverEndingJob, jobWithAnotherErr)
+		err := nursery.RunConcurrentlyWithTimeout(time.Second, jobWithErr, neverEndingJob, jobWithAnotherErr)
 
 		if jobsDone != [3]bool{true, true, true} {
 			t.Fatalf("expected all jobs to be done but instead got: %v", jobsDone)
@@ -514,7 +518,7 @@ func TestRunUntilFirstCompletionWithTimeout(t *testing.T) {
 			jobsDone[1] = true
 		}
 
-		err := RunUntilFirstCompletionWithTimeout(time.Millisecond*10, jobForeverA, jobForeverB)
+		err := nursery.RunUntilFirstCompletionWithTimeout(time.Millisecond*10, jobForeverA, jobForeverB)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -563,7 +567,7 @@ func TestRunUntilFirstCompletionWithTimeout(t *testing.T) {
 			jobsDone[1] = true
 		}
 
-		err := RunUntilFirstCompletionWithTimeout(time.Millisecond*10, quickJobA, notAsQuickJobB)
+		err := nursery.RunUntilFirstCompletionWithTimeout(time.Millisecond*10, quickJobA, notAsQuickJobB)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -602,7 +606,7 @@ func TestRunUntilFirstCompletionWithTimeout(t *testing.T) {
 			jobsDone[1] = true
 		}
 
-		err := RunUntilFirstCompletionWithTimeout(time.Second, jobWithErr, neverEndingJob)
+		err := nursery.RunUntilFirstCompletionWithTimeout(time.Second, jobWithErr, neverEndingJob)
 
 		if jobsDone != [2]bool{true, true} {
 			t.Fatalf("expected all jobs to be done but instead got: %v", jobsDone)
@@ -646,11 +650,11 @@ func TestRunUntilFirstCompletionWithTimeout(t *testing.T) {
 			jobsDone[1] = true
 		}
 
-		jobs := []ConcurrentJob{
+		jobs := []nursery.ConcurrentJob{
 			jobWithErr, neverEndingJob, jobWithAnotherErr,
 		}
 
-		err := RunUntilFirstCompletionWithTimeout(time.Second, jobs...)
+		err := nursery.RunUntilFirstCompletionWithTimeout(time.Second, jobs...)
 
 		if jobsDone != [3]bool{true, true, true} {
 			t.Fatalf("expected all jobs to be done but instead got: %v", jobsDone)
@@ -708,7 +712,7 @@ func TestRunConcurrentlyWithContext(t *testing.T) {
 			cancel()
 		}()
 
-		err := RunConcurrentlyWithContext(ctx, jobForeverA, jobForeverB)
+		err := nursery.RunConcurrentlyWithContext(ctx, jobForeverA, jobForeverB)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -765,7 +769,7 @@ func TestRunUntilFirstCompletionWithContext(t *testing.T) {
 			cancel()
 		}()
 
-		err := RunUntilFirstCompletionWithContext(ctx, jobForeverA, jobForeverB)
+		err := nursery.RunUntilFirstCompletionWithContext(ctx, jobForeverA, jobForeverB)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -776,6 +780,45 @@ func TestRunUntilFirstCompletionWithContext(t *testing.T) {
 
 		if jobsCount[0]+jobsCount[1] < 18 || jobsCount[0]+jobsCount[1] > 25 {
 			t.Fatalf("jobsCount out of range. Expected 18 < total < 25 but got: %v", jobsCount)
+		}
+	})
+}
+
+func TestRunMultipleCopiesConcurrently(t *testing.T) {
+	t.Run("producer and multiple concurrent consumers", func(t *testing.T) {
+		ch := make(chan struct{})
+		result := make(map[int]int)
+		nursery.RunConcurrently(
+			// producer job producing 10 items
+			func(context.Context, chan error) {
+				for i := 0; i < 10; i++ {
+					ch <- struct{}{}
+				}
+				close(ch)
+			},
+			// consumer job
+			func(context.Context, chan error) {
+				mu := sync.Mutex{}
+				nursery.RunMultipleCopiesConcurrently(5,
+					// the job listens on ch and if activated will update
+					// result map with a counter for it's own Job ID
+					func(ctx context.Context, errCh chan error) {
+						myJobID := ctx.Value(nursery.JobID).(int) + 1
+						for range ch {
+							time.Sleep(time.Millisecond * 10)
+							mu.Lock()
+							v := result[myJobID]
+							result[myJobID] = v + 1
+							mu.Unlock()
+						}
+					},
+				)
+			},
+		)
+		if !reflect.DeepEqual(result, map[int]int{
+			1: 2, 2: 2, 3: 2, 4: 2, 5: 2,
+		}) {
+			t.Fatalf("expected a different result than: %#v", result)
 		}
 	})
 }
