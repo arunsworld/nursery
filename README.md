@@ -20,9 +20,14 @@ RunConcurrently(
 log.Println("All jobs done...")
 ```
 
+## Installation
+```bash
+go get -u github.com/arunsworld/nursery
+```
+
 [Notes on structured concurrency, or: Go statement considered harmful](https://vorpus.org/blog/notes-on-structured-concurrency-or-go-statement-considered-harmful/#nurseries-a-structured-replacement-for-go-statements) is an article that compares the dangers of goto with the go statement.
 
-While I don't necessarily agree with the entire content I can appreciate that even with Go's high-level abstraction of concurrency using Goroutines, Channels & the select statement it is possible to end up with deadlocks, leaked goroutines and race conditions.
+While I don't necessarily agree with the entire content I can appreciate that even with Go's high-level abstraction of concurrency using Goroutines, Channels & the select statement it is possible to end up with unreadable code, deadlocks, leaked goroutines, race conditions and poor error handling.
 
 Implementing a higher-level abstraction for the use-cases mentioned is very straightforward in Go and this simple package provides just that.
 
@@ -39,3 +44,5 @@ The following functions are provided:
 `ConcurrentJob` is a simple function that takes a context and error channel. We need to ensure that we're listening to the `Done()` channel on context and if invoked to clean-up resources and bail out. Errors are to be published to the error channel for proper handling.
 
 Note: while this package simplifies the semantics of defining and executing concurrent code it cannot protect against bad concurrent programming such as using shared resources across jobs leading to data corruption or panics due to race conditions.
+
+You may also be interested in reading [Structured Concurrency in Go](https://medium.com/@arunsworld/structured-concurrency-in-go-b800c7c4434e).
