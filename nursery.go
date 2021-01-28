@@ -117,6 +117,16 @@ func RunUntilFirstCompletionWithTimeout(timeout time.Duration, jobs ...Concurren
 	return RunUntilFirstCompletionWithContext(ctx, jobs...)
 }
 
+// IsContextDone is a utility function to check if the context is Done/Cancelled.
+func IsContextDone(ctx context.Context) bool {
+	select {
+	case <-ctx.Done():
+		return true
+	default:
+		return false
+	}
+}
+
 func cancelOnFirstError(cancel context.CancelFunc, errCh chan error) error {
 	err := <-errCh
 	if err == nil {

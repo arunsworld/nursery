@@ -46,3 +46,5 @@ The following functions are provided:
 Note: while this package simplifies the semantics of defining and executing concurrent code it cannot protect against bad concurrent programming such as using shared resources across jobs leading to data corruption or panics due to race conditions.
 
 You may also be interested in reading [Structured Concurrency in Go](https://medium.com/@arunsworld/structured-concurrency-in-go-b800c7c4434e).
+
+The library includes a utility function: `IsContextDone(context.Context)` to check if the passed in context is done or not. This can be used as a guard clause in a for loop within a ConcurrentJob using the passed in context to decide whether to stop processing and return or continue.

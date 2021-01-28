@@ -343,8 +343,8 @@ func TestRunConcurrentlyWithTimeout(t *testing.T) {
 			t.Fatalf("expected all jobs to be done but instead got: %v", jobsDone)
 		}
 
-		if jobsCount[0]+jobsCount[1] < 18 || jobsCount[0]+jobsCount[1] > 22 {
-			t.Fatalf("jobsCount out of range. Expected 18 < total < 22 but got: %v", jobsCount)
+		if jobsCount[0]+jobsCount[1] < 10 || jobsCount[0]+jobsCount[1] > 22 {
+			t.Fatalf("jobsCount out of range. Expected 10 < total < 22 but got: %v", jobsCount)
 		}
 	})
 
@@ -721,8 +721,8 @@ func TestRunConcurrentlyWithContext(t *testing.T) {
 			t.Fatalf("expected all jobs to be done but instead got: %v", jobsDone)
 		}
 
-		if jobsCount[0]+jobsCount[1] < 18 || jobsCount[0]+jobsCount[1] > 25 {
-			t.Fatalf("jobsCount out of range. Expected 18 < total < 25 but got: %v", jobsCount)
+		if jobsCount[0]+jobsCount[1] < 10 || jobsCount[0]+jobsCount[1] > 25 {
+			t.Fatalf("jobsCount out of range. Expected 10 < total < 25 but got: %v", jobsCount)
 		}
 	})
 }
@@ -819,6 +819,27 @@ func TestRunMultipleCopiesConcurrently(t *testing.T) {
 			1: 2, 2: 2, 3: 2, 4: 2, 5: 2,
 		}) {
 			t.Fatalf("expected a different result than: %#v", result)
+		}
+	})
+}
+
+func TestIsContextDone(t *testing.T) {
+	// Given
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Run("detects contexts that are alive (not done)", func(t *testing.T) {
+		// Then
+		status := nursery.IsContextDone(ctx)
+		if status == true {
+			t.Fatal("expected context not to be done, but it is")
+		}
+	})
+	t.Run("detects contexts that are not alive (done or cancelled)", func(t *testing.T) {
+		// When
+		cancel()
+		// Then
+		status := nursery.IsContextDone(ctx)
+		if status == false {
+			t.Fatal("expected context to be done, but it is not")
 		}
 	})
 }
