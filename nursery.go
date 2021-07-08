@@ -22,6 +22,7 @@ func RunConcurrentlyWithContext(parentCtx context.Context, jobs ...ConcurrentJob
 	var result error
 
 	ctx, cancel := context.WithCancel(parentCtx)
+	defer cancel()
 
 	errCh := make(chan error, 10)
 	waitForErrCompletion := sync.WaitGroup{}
@@ -82,6 +83,7 @@ func RunUntilFirstCompletionWithContext(parentCtx context.Context, jobs ...Concu
 	var result error
 
 	ctx, cancel := context.WithCancel(parentCtx)
+	defer cancel()
 
 	errCh := make(chan error, 10)
 	waitForErrCompletion := sync.WaitGroup{}
